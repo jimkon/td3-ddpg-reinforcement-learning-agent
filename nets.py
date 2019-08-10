@@ -46,7 +46,9 @@ class FullyConnectedDNN:
 
         print("NN: layers:{}, activations:{}".format(layers, all_activations, all_use_biases))
 
-        self.ys, self.Ws, self.bs = [], [], []
+        self.ys = []
+
+        self.weights_and_biases = {}
 
         # tf.compat.v1.reset_default_graph()
         self.x = tf.compat.v1.placeholder(tf.float64, shape=(None, input_dims))
@@ -55,8 +57,8 @@ class FullyConnectedDNN:
             y, W, b = nn_layer(x, layer, all_activations[i], drop_out=drop_out if i > 0 else 0., use_bias=all_use_biases[i], return_vars=True)
 
             self.ys.append(y)
-            self.Ws.append(W)
-            self.bs.append(b)
+            self.weights_and_biases['W{}'.format(i)] = W
+            self.weights_and_biases['b{}'.format(i)] = b
 
             x = y
 
@@ -102,6 +104,12 @@ class FullyConnectedDNN:
     def partial_fit(self, X, y):
         self.fit(np.atleast_2d(X), np.atleast_2d(y))
 
+    def target_update(self, model, tau=5e-3):
+        for key, value in model.keys():
+            var_target, var = self.weights_and_biases[key], self.model.weights_and_biases[key]
+            assert (tf.shape(var_target) == tf.shape(var)).all()
+            self.sess.run(var_target.assign(tau*var+(1-tau)*var_target))
+
 
 class ActorModel(FullyConnectedDNN):
 
@@ -111,46 +119,38 @@ class ActorModel(FullyConnectedDNN):
                          activations=activations, output_activation=output_activation, output_use_bias=output_use_bias,
                          lr=lr, **kwargs)
 
-        self.gamma = gamma
+        # self.gamma = gamma
+        #
+        # gammas_n = 1000
+        # self.GAMMAS = np.power(gamma*np.ones(gammas_n), np.arange(gammas_n, 0, -1)-1)
+        #
+        # self.pi_s = self.y
+        #
+        # self.actions = tf.placeholder(tf.int64, shape=(None,))
+        # self.rewards = tf.placeholder(tf.float64, shape=(None,))
+        # self.gammas = tf.placeholder(tf.float64, shape=(None,))
+        # self.vs = tf.placeholder(tf.float64, shape=(None,))
+        #
+        # self.pi_s_a = tf.reduce_sum(self.pi_s*tf.one_hot(self.actions, self.output_dims, dtype=tf.float64), axis=1)
+        #
+        # self.advantages = self.gammas*self.rewards-self.vs
+        #
+        # self.loss = -tf.reduce_sum(self.advantages*tf.log(self.pi_s_a))
+        #
+        # self.train = tf.compat.v1.train.AdamOptimizer(lr).minimize(self.loss)
+        #
+        # self.sess.run(tf.compat.v1.global_variables_initializer())
 
-        gammas_n = 1000
-        self.GAMMAS = np.power(gamma*np.ones(gammas_n), np.arange(gammas_n, 0, -1)-1)
-
-        self.pi_s = self.y
-
-        self.actions = tf.placeholder(tf.int64, shape=(None,))
-        self.rewards = tf.placeholder(tf.float64, shape=(None,))
-        self.gammas = tf.placeholder(tf.float64, shape=(None,))
-        self.vs = tf.placeholder(tf.float64, shape=(None,))
-
-        self.pi_s_a = tf.reduce_sum(self.pi_s*tf.one_hot(self.actions, self.output_dims, dtype=tf.float64), axis=1)
-
-        self.advantages = self.gammas*self.rewards-self.vs
-
-        self.loss = -tf.reduce_sum(self.advantages*tf.log(self.pi_s_a))
-
-        self.train = tf.compat.v1.train.AdamOptimizer(lr).minimize(self.loss)
-
-        self.sess.run(tf.compat.v1.global_variables_initializer())
-
-    def policy(self, states, actions=None):
+    def policy(self, states):
         states = np.atleast_2d(states)
 
         assert states.shape[1] == self.input_dims
 
-        if actions is None:
-            result = self.sess.run(self.pi_s, feed_dict={
-                    self.x: states
-            })
-            assert result.shape[1] == self.output_dims
-        else:
-            actions = np.atleast_1d(actions)
-            result = self.sess.run(self.pi_s_a, feed_dict={
-                    self.x: states,
-                    self.actions: actions
-            })
-            assert len(result.shape) == 1
+        result = self.sess.run(self.pi_s, feed_dict={
+                self.x: states
+        })
 
+        assert result.shape[1] == self.output_dims
         assert result.shape[0] == states.shape[0]
 
         return result
