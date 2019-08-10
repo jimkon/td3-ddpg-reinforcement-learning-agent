@@ -103,10 +103,13 @@ class FullyConnectedDNN:
         self.fit(np.atleast_2d(X), np.atleast_2d(y))
 
 
-class PolicyModel(FullyConnectedDNN):
+class ActorModel(FullyConnectedDNN):
 
-    def __init__(self, input_dims, output_dims, gamma=.99, lr=1e-2, **kwargs):
-        super().__init__(input_dims, output_dims, **kwargs, output_activation=tf.nn.softmax, output_use_bias=False)
+    def __init__(self, state_dims, action_dims, hidden_layers=[400, 300], activations=[tf.nn.relu, tf.nn.relu],
+                 output_activation=tf.nn.tanh, output_use_bias=False, lr=1e-3, **kwargs):
+        super().__init__(input_dims=state_dims, output_dims=action_dims, hidden_layers=hidden_layers,
+                         activations=activations, output_activation=output_activation, output_use_bias=output_use_bias,
+                         lr=lr, **kwargs)
 
         self.gamma = gamma
 
@@ -176,28 +179,35 @@ class PolicyModel(FullyConnectedDNN):
 
 class CriticModel(FullyConnectedDNN):
 
-    def __init__(self, state_dims, action_dims, **kwargs):
+    def __init__(self, state_dims,
+                 action_dims,
+                 hidden_layers=[400, 300],
+                 activations=[tf.nn.relu, tf.nn.relu],
+                 output_activation=None,
+                 output_use_bias=False,
+                 lr=1e-3,
+                 **kwargs):
         self.state_dims = state_dims
-        self.action_dims 
-        super().__init__(input_dims=input_dims, output_dims=1, **kwargs)
+        self.action_dims = action_dims
 
-    def value(self, states):
+        super().__init__(input_dims=state_dims+action_dims,
+                         output_dims=1,
+                         hidden_layers=hidden_layers,
+                         activations=activations,
+                         output_activation=output_activation,
+                         output_use_bias=output_use_bias,
+                         lr=lr,
+                         **kwargs)
+
+    def Q(self, states, actions):
         states = np.atleast_2d(states)
+        actions = np.atleast_2d(actions)
 
-        assert states.shape[1] == self.input_dims
+        assert states.shape[1] == self.state_dims
+        assert actions.shape[1] == self.action_dims
 
-        return self.predict(states).flatten()
+        state_action_pairs = np.hstack([states, actions])
 
-    def full_episode_update(self, states, rewards):
+        return self.predict(state_action_pairs).flatten()
 
-        states = np.atleast_2d(states)
-        rewards = np.reshape(rewards, (-1, 1))
-
-        size = len(states)
-        assert len(rewards) == size, '{} != {}'.format(len(rewards), size)
-
-        self.fit(states, rewards)
-
-    def td_update(self, state, reward):
-        raise NotImplementedError
 
