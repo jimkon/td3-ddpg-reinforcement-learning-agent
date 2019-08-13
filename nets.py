@@ -29,7 +29,7 @@ def nn_layer(x, size, activation=tf.nn.relu, drop_out=0.3, use_bias=True, return
 
 class FullyConnectedDNN:
 
-    def __init__(self, input_dims, output_dims, hidden_layers=[200, 100], activations=[tf.nn.relu, tf.nn.relu], use_biases=[True, True],
+    def __init__(self, input_dims, output_dims, hidden_layers=(200, 100), activations=[tf.nn.relu, tf.nn.relu], use_biases=[True, True],
                  drop_out=.3, output_activation=None, output_use_bias=False, lr=1e-2):
 
         self.input_dims = input_dims
@@ -39,9 +39,9 @@ class FullyConnectedDNN:
         self.output_shape = tuple([self.output_dims])
 
         layers = np.append(hidden_layers, output_dims).astype(np.int) if hidden_layers is not None else np.array([output_dims])
-        all_activations = activations.copy() if activations is not None else []
+        all_activations = list(activations) if activations is not None else []
         all_activations.append(output_activation)
-        all_use_biases = use_biases.copy() if use_biases is not None else []
+        all_use_biases = list(use_biases) if use_biases is not None else []
         all_use_biases.append(output_use_bias)
 
         print("NN: layers:{}, activations:{}".format(layers, all_activations, all_use_biases))
@@ -105,41 +105,18 @@ class FullyConnectedDNN:
         self.fit(np.atleast_2d(X), np.atleast_2d(y))
 
     def target_update(self, model, tau=5e-3):
-        for key, value in model.keys():
-            var_target, var = self.weights_and_biases[key], self.model.weights_and_biases[key]
+        for key, value in self.weights_and_biases.keys():
+            var_target, var = self.weights_and_biases[key], model.weights_and_biases[key]
             assert (tf.shape(var_target) == tf.shape(var)).all()
             self.sess.run(var_target.assign(tau*var+(1-tau)*var_target))
 
 
 class ActorModel(FullyConnectedDNN):
 
-    def __init__(self, state_dims, action_dims, hidden_layers=[400, 300], activations=[tf.nn.relu, tf.nn.relu],
-                 output_activation=tf.nn.tanh, output_use_bias=False, lr=1e-3, **kwargs):
+    def __init__(self, state_dims, action_dims, hidden_layers=(400, 300), activations=[tf.nn.relu, tf.nn.relu],
+                 output_activation=tf.nn.tanh, output_use_bias=False, **kwargs):
         super().__init__(input_dims=state_dims, output_dims=action_dims, hidden_layers=hidden_layers,
-                         activations=activations, output_activation=output_activation, output_use_bias=output_use_bias,
-                         lr=lr, **kwargs)
-
-        # self.gamma = gamma
-        #
-        # gammas_n = 1000
-        # self.GAMMAS = np.power(gamma*np.ones(gammas_n), np.arange(gammas_n, 0, -1)-1)
-        #
-        # self.pi_s = self.y
-        #
-        # self.actions = tf.placeholder(tf.int64, shape=(None,))
-        # self.rewards = tf.placeholder(tf.float64, shape=(None,))
-        # self.gammas = tf.placeholder(tf.float64, shape=(None,))
-        # self.vs = tf.placeholder(tf.float64, shape=(None,))
-        #
-        # self.pi_s_a = tf.reduce_sum(self.pi_s*tf.one_hot(self.actions, self.output_dims, dtype=tf.float64), axis=1)
-        #
-        # self.advantages = self.gammas*self.rewards-self.vs
-        #
-        # self.loss = -tf.reduce_sum(self.advantages*tf.log(self.pi_s_a))
-        #
-        # self.train = tf.compat.v1.train.AdamOptimizer(lr).minimize(self.loss)
-        #
-        # self.sess.run(tf.compat.v1.global_variables_initializer())
+                         activations=activations, output_activation=output_activation, output_use_bias=output_use_bias, **kwargs)
 
     def policy(self, states):
         states = np.atleast_2d(states)
@@ -181,11 +158,10 @@ class CriticModel(FullyConnectedDNN):
 
     def __init__(self, state_dims,
                  action_dims,
-                 hidden_layers=[400, 300],
-                 activations=[tf.nn.relu, tf.nn.relu],
+                 hidden_layers=(400, 300),
+                 activations=(tf.nn.relu, tf.nn.relu),
                  output_activation=None,
                  output_use_bias=False,
-                 lr=1e-3,
                  **kwargs):
         self.state_dims = state_dims
         self.action_dims = action_dims
@@ -196,7 +172,6 @@ class CriticModel(FullyConnectedDNN):
                          activations=activations,
                          output_activation=output_activation,
                          output_use_bias=output_use_bias,
-                         lr=lr,
                          **kwargs)
 
     def Q(self, states, actions):

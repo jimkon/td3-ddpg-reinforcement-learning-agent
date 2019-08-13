@@ -1,6 +1,7 @@
 import unittest
 from td3 import *
 
+
 class TestCritic(unittest.TestCase):
 
     def setUp(self):
@@ -21,6 +22,15 @@ class TestCritic(unittest.TestCase):
                                np.array([0, 1, 2]),
                                np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
                                np.array([[0], [1], [2]]))
+        except Exception as e:
+            self.assertTrue(False, "Update threw Exception {}".format(e))
+
+        try:
+            self.critic.update(np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
+                               np.array([[0], [1], [2]]),
+                               np.array([0, 1, 2]),
+                               np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
+                               np.array([[0], [1], [2]]), update_targets=True)
 
         except Exception as e:
             self.assertTrue(False, "Update threw Exception {}".format(e))
