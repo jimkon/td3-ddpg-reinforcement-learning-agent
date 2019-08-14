@@ -114,8 +114,9 @@ class FullyConnectedDNN:
                 continue
             self.sess.run(var_target.assign(tau*var+(1-tau)*var_target))
 
-    def copy(self):
-        self_copy = FullyConnectedDNN(**self.init_args)
+    def copy(self, **replace_args):
+        args = dict(list(self.init_args.items())+list(replace_args.items()))
+        self_copy = FullyConnectedDNN(**args)
         self_copy.target_update(self, tau=1)
         return self_copy
 

@@ -20,6 +20,8 @@ class TestFullyConnectedDNN(unittest.TestCase):
         self.assertTrue(np.array_equal(self.model.predict(np.array([0, 1, 2])), copy.predict(np.array([0, 1, 2]))),
                         '{} != {}'.format(self.model.predict(np.array([0, 1, 2])), copy.predict(np.array([0, 1, 2]))))
 
+        self.assertTrue(self.model.copy(drop_out=.3).init_args['drop_out'] == .3,
+                        self.model.copy(drop_out=.3).init_args['drop_out'])
 
 class TestCriticModel(unittest.TestCase):
 
