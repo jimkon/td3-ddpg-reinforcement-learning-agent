@@ -30,7 +30,7 @@ def nn_layer(x, size, activation=tf.nn.relu, drop_out=0.3, use_bias=True, return
 class FullyConnectedDNN:
 
     def __init__(self, input_dims, output_dims, hidden_layers=(200, 100), activations=[tf.nn.relu, tf.nn.relu], use_biases=[True, True],
-                 drop_out=.3, output_activation=None, output_use_bias=False, lr=1e-2):
+                 drop_out=.3, output_activation=None, output_use_bias=False, x=None, lr=1e-2):
 
         self.input_dims = input_dims
         self.output_dims = output_dims
@@ -52,7 +52,7 @@ class FullyConnectedDNN:
 
         # tf.compat.v1.reset_default_graph()
         self.x = tf.compat.v1.placeholder(tf.float64, shape=(None, input_dims))
-        x = self.x
+        x = self.x if x is None else x
         for i, layer in enumerate(layers):
             y, W, b = nn_layer(x, layer, all_activations[i], drop_out=drop_out if i > 0 else 0., use_bias=all_use_biases[i], return_vars=True)
 
@@ -113,7 +113,7 @@ class FullyConnectedDNN:
 
 class ActorModel(FullyConnectedDNN):
 
-    def __init__(self, state_dims, action_dims, hidden_layers=(400, 300), activations=[tf.nn.relu, tf.nn.relu],
+    def __init__(self, state_dims, action_dims, hidden_layers=(400, 300), activations=(tf.nn.relu, tf.nn.relu),
                  output_activation=tf.nn.tanh, output_use_bias=False, **kwargs):
         super().__init__(input_dims=state_dims, output_dims=action_dims, hidden_layers=hidden_layers,
                          activations=activations, output_activation=output_activation, output_use_bias=output_use_bias, **kwargs)
@@ -123,35 +123,12 @@ class ActorModel(FullyConnectedDNN):
 
         assert states.shape[1] == self.input_dims
 
-        result = self.sess.run(self.pi_s, feed_dict={
-                self.x: states
-        })
+        result = self.predict(states)
 
         assert result.shape[1] == self.output_dims
         assert result.shape[0] == states.shape[0]
 
         return result
-
-    def full_episode_update(self, states, actions, rewards, vs):
-        states = np.atleast_2d(states)
-        actions = np.atleast_1d(actions)
-        rewards = np.atleast_1d(rewards)
-        vs = np.atleast_1d(vs)
-
-        size = len(states)
-        assert len(actions) == size, '{} != {}'.format(len(actions), size)
-        assert len(rewards) == size, '{} != {}'.format(len(rewards), size)
-        assert len(vs) == size, '{} != {}'.format(len(vs), size)
-
-        self.sess.run(self.train, feed_dict={self.x: states,
-                                             self.actions: actions,
-                                             self.gammas: self.GAMMAS[-size:],
-                                             self.rewards: rewards,
-                                             self.vs: vs
-                                             })
-
-    def td_update(self, state, action, reward, v):
-        raise NotImplementedError
 
 
 class CriticModel(FullyConnectedDNN):
@@ -163,26 +140,32 @@ class CriticModel(FullyConnectedDNN):
                  output_activation=None,
                  output_use_bias=False,
                  **kwargs):
+
         self.state_dims = state_dims
         self.action_dims = action_dims
 
-        super().__init__(input_dims=state_dims+action_dims,
-                         output_dims=1,
-                         hidden_layers=hidden_layers,
-                         activations=activations,
-                         output_activation=output_activation,
-                         output_use_bias=output_use_bias,
-                         **kwargs)
+        self.states = tf.compat.v1.placeholder(tf.float64, shape=(None, state_dims))
+        self.actions = tf.compat.v1.placeholder(tf.float64, shape=(None, action_dims))
+
+        x_input = tf.compat.v1.concat([self.states, self.actions], axis=1)
+
+        super().__init__(input_dims=state_dims + action_dims, output_dims=1, hidden_layers=hidden_layers,
+                         activations=activations, output_activation=output_activation, output_use_bias=output_use_bias,
+                         x=x_input, **kwargs)
 
     def Q(self, states, actions):
         states = np.atleast_2d(states)
         actions = np.atleast_2d(actions)
 
+        assert states.shape[0] == actions.shape[0]
         assert states.shape[1] == self.state_dims
         assert actions.shape[1] == self.action_dims
 
-        state_action_pairs = np.hstack([states, actions])
+        # state_action_pairs = np.hstack([states, actions])
 
-        return self.predict(state_action_pairs).flatten()
+        res = self.sess.run(self.y, feed_dict={self.states: states,
+                                               self.actions: actions})
+
+        return res.flatten()
 
 
