@@ -2,6 +2,25 @@ import unittest
 from nets import *
 
 
+class TestFullyConnectedDNN(unittest.TestCase):
+
+    def setUp(self):
+        self.model = FullyConnectedDNN(input_dims=3, output_dims=2, drop_out=.0)
+
+    def test_predict_shape(self):
+        self.assertTrue(self.model.predict(np.array([0, 1, 2])).shape == (1, 2),
+                        self.model.predict(np.array([0, 1, 2])).shape)
+        self.assertTrue(self.model.predict(np.array([[0, 1, 2]])).shape == (1, 2),
+                        self.model.predict(np.array([[0, 1, 2]])).shape)
+        self.assertTrue(self.model.predict(np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]])).shape == (3, 2),
+                        self.model.predict(np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]])))
+
+    def test_copy(self):
+        copy = self.model.copy()
+        self.assertTrue(np.array_equal(self.model.predict(np.array([0, 1, 2])), copy.predict(np.array([0, 1, 2]))),
+                        '{} != {}'.format(self.model.predict(np.array([0, 1, 2])), copy.predict(np.array([0, 1, 2]))))
+
+
 class TestCriticModel(unittest.TestCase):
 
     def setUp(self):

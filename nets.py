@@ -29,8 +29,11 @@ def nn_layer(x, size, activation=tf.nn.relu, drop_out=0.3, use_bias=True, return
 
 class FullyConnectedDNN:
 
-    def __init__(self, input_dims, output_dims, hidden_layers=(200, 100), activations=[tf.nn.relu, tf.nn.relu], use_biases=[True, True],
+    def __init__(self, input_dims, output_dims, hidden_layers=(200, 100), activations=(tf.nn.relu, tf.nn.relu), use_biases=(True, True),
                  drop_out=.3, output_activation=None, output_use_bias=False, x=None, lr=1e-2):
+
+        self.init_args = locals()
+        del self.init_args['self']
 
         self.input_dims = input_dims
         self.output_dims = output_dims
@@ -105,10 +108,16 @@ class FullyConnectedDNN:
         self.fit(np.atleast_2d(X), np.atleast_2d(y))
 
     def target_update(self, model, tau=5e-3):
-        for key, value in self.weights_and_biases.keys():
+        for key in self.weights_and_biases.keys():
             var_target, var = self.weights_and_biases[key], model.weights_and_biases[key]
-            assert (tf.shape(var_target) == tf.shape(var)).all()
+            if var_target is None and var is None:
+                continue
             self.sess.run(var_target.assign(tau*var+(1-tau)*var_target))
+
+    def copy(self):
+        self_copy = FullyConnectedDNN(**self.init_args)
+        self_copy.target_update(self, tau=1)
+        return self_copy
 
 
 class ActorModel(FullyConnectedDNN):
