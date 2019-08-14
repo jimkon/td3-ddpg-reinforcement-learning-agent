@@ -61,7 +61,8 @@ class FullyConnectedDNN:
 
             self.ys.append(y)
             self.weights_and_biases['W{}'.format(i)] = W
-            self.weights_and_biases['b{}'.format(i)] = b
+            if all_use_biases[i]:
+                self.weights_and_biases['b{}'.format(i)] = b
 
             x = y
 
@@ -117,28 +118,8 @@ class FullyConnectedDNN:
     def copy(self, **replace_args):
         args = dict(list(self.init_args.items())+list(replace_args.items()))
         self_copy = FullyConnectedDNN(**args)
-        self_copy.target_update(self, tau=1)
+        self_copy.target_update(self, tau=1.)
         return self_copy
-
-
-class ActorModel(FullyConnectedDNN):
-
-    def __init__(self, state_dims, action_dims, hidden_layers=(400, 300), activations=(tf.nn.relu, tf.nn.relu),
-                 output_activation=tf.nn.tanh, output_use_bias=False, **kwargs):
-        super().__init__(input_dims=state_dims, output_dims=action_dims, hidden_layers=hidden_layers,
-                         activations=activations, output_activation=output_activation, output_use_bias=output_use_bias, **kwargs)
-
-    def policy(self, states):
-        states = np.atleast_2d(states)
-
-        assert states.shape[1] == self.input_dims
-
-        result = self.predict(states)
-
-        assert result.shape[1] == self.output_dims
-        assert result.shape[0] == states.shape[0]
-
-        return result
 
 
 class CriticModel(FullyConnectedDNN):
@@ -179,3 +160,23 @@ class CriticModel(FullyConnectedDNN):
         return res.flatten()
 
 
+class ActorModel(FullyConnectedDNN):
+
+    def __init__(self, state_dims, action_dims, hidden_layers=(400, 300), activations=(tf.nn.relu, tf.nn.relu),
+                 output_activation=tf.nn.tanh, output_use_bias=False, **kwargs):
+        super().__init__(input_dims=state_dims, output_dims=action_dims, hidden_layers=hidden_layers,
+                         activations=activations, output_activation=output_activation, output_use_bias=output_use_bias, **kwargs)
+
+        self.states = self.x
+
+    def policy(self, states):
+        states = np.atleast_2d(states)
+
+        assert states.shape[1] == self.input_dims
+
+        result = self.predict(states)
+
+        assert result.shape[1] == self.output_dims
+        assert result.shape[0] == states.shape[0]
+
+        return result
