@@ -15,10 +15,10 @@ class Critic:
         self.target_model1 = CriticModel(state_dims=state_dims, action_dims=action_dims, **nn_args)
         self.target_model2 = CriticModel(state_dims=state_dims, action_dims=action_dims, **nn_args)
 
-        self.min_Q_s_a = tf.compat.v1.placeholder(tf.float64, shape=(None, 1))
+        self.min_Q_sa = tf.compat.v1.placeholder(tf.float64, shape=(None, 1))
 
-        self.loss = tf.losses.mean_squared_error(self.min_Q_s_a, self.model1.y) +\
-                    tf.losses.mean_squared_error(self.min_Q_s_a, self.model2.y)
+        self.loss = tf.losses.mean_squared_error(self.min_Q_sa, self.model1.y) +\
+                    tf.losses.mean_squared_error(self.min_Q_sa, self.model2.y)
         self.train = tf.compat.v1.train.GradientDescentOptimizer(lr).minimize(self.loss)
 
         self.sess = tf.Session() if sess is None else sess
@@ -29,24 +29,22 @@ class Critic:
 
         self.sess.run(tf.compat.v1.global_variables_initializer())
 
-    def update(self, states, actions, rewards, states_, actions_, update_targets=False):
-        min_q_s_a_ = np.min([self.model1.Q(states_, actions_), self.model2.Q(states_, actions_)], axis=0)
+    def update(self, states, actions, rewards, states_, actions_):
+        min_q_s_a_ = self.Q(states_, actions_)
         q_sa = np.reshape(rewards+self.gamma*min_q_s_a_, (-1, 1))
-
-        # states_actions = np.hstack([states, actions])
 
         self.sess.run(self.train, feed_dict={self.model1.states: states,
                                              self.model1.actions: actions,
                                              self.model2.states: states,
                                              self.model2.actions: actions,
-                                             self.min_Q_s_a: q_sa})
-
-        if update_targets:
-            self.target_model1.target_update(self.model1, self.tau)
-            self.target_model2.target_update(self.model2, self.tau)
+                                             self.min_Q_sa: q_sa})
 
     def Q(self, states, actions):
         return np.min([self.target_model1.Q(states, actions), self.target_model2.Q(states, actions)], axis=0)
+
+    def update_targets(self):
+        self.target_model1.target_update(self.model1, self.tau)
+        self.target_model2.target_update(self.model2, self.tau)
 
 
 class Actor:
@@ -85,4 +83,5 @@ class Actor:
         self.sess.run(self.train, feed_dict={self.states: states,
                                              self.model.states: states})
 
+    def update_target(self):
         self.target_model.target_update(self.model, self.tau)
