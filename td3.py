@@ -69,7 +69,7 @@ class Actor:
         critic_input = tf.compat.v1.concat([self.states, self.actions], axis=1)
         self.critic_graph = self.critic.model1.copy(x=critic_input)
 
-        self.loss = -self.critic_graph.y
+        self.loss = -tf.reduce_mean(self.critic_graph.y)
         self.train = tf.compat.v1.train.GradientDescentOptimizer(lr).minimize(self.loss,
                                                                               var_list=list(self.model.weights_and_biases.values()))
 
