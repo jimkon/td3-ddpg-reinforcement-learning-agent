@@ -137,15 +137,15 @@ class TD3:
         self.step_counter = 0
 
     def act(self, state):
-        return self.actor.pi(state)
+        return self.actor.pi(state)[0]
 
     def observe(self, state, action, reward, state_, episode=-1, step=-1):
-
-        self.buffer.push(np.array([state, action, reward, state_]))
+        self.buffer.push(state, action, reward, state_)
 
         if self.step_counter>self.batch_size:
             states, actions, rewards, states_ = self.buffer.get_random(self.batch_size)
-            self.critic.update(states, actions, rewards, states_)
+
+            self.critic.update(states, actions, rewards, states_, self.actor.pi(states_))
 
             if self.step_counter % self.target_update_rate == self.target_update_rate-1:
                 self.actor.update(states)
