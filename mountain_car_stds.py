@@ -78,7 +78,7 @@ def run(agent, episodes=1000, verbose=2, env=env):
             action = agent.act(state)
             state_, reward, done, _ = env.step(action)
 
-            agent.observe(state, action, reward, state_, episode=episode, step=step_count)
+            agent.observe(state, action, reward, state_, done, episode=episode, step=step_count)
 
             episode_reward += reward
 

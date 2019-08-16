@@ -29,9 +29,9 @@ class Critic:
 
         self.sess.run(tf.compat.v1.global_variables_initializer())
 
-    def update(self, states, actions, rewards, states_, actions_):
+    def update(self, states, actions, rewards, states_, actions_, dones):
         min_q_s_a_ = self.Q(states_, actions_)
-        q_sa = np.reshape(rewards+self.gamma*min_q_s_a_, (-1, 1))
+        q_sa = np.reshape(rewards+self.gamma*min_q_s_a_*dones, (-1, 1))
 
         self.sess.run(self.train, feed_dict={self.model1.states: states,
                                              self.model1.actions: actions,
@@ -95,12 +95,14 @@ class ExperienceReplay:
             self.__actions = []
             self.__rewards = []
             self.__states_ = []
+            self.__dones = []
 
-        def push(self, state, action, reward, state_):
+        def push(self, state, action, reward, state_, done):
             self.__states.append(state)
             self.__actions.append(action)
             self.__rewards.append(reward)
             self.__states_.append(state_)
+            self.__dones.append(done)
             self.__pop_extra()
 
         def __pop_extra(self):
@@ -110,6 +112,7 @@ class ExperienceReplay:
                 self.__actions.pop(0)
                 self.__rewards.pop(0)
                 self.__states_.pop(0)
+                self.__dones.pop(0)
 
         def get_random(self, count=1):
             indexes = np.random.randint(0, self.length(), count)
@@ -117,7 +120,8 @@ class ExperienceReplay:
             actions = np.array([self.__actions[index] for index in indexes])
             rewards = np.array([self.__rewards[index] for index in indexes])
             states_ = np.array([self.__states_[index] for index in indexes])
-            return states, actions, rewards, states_
+            dones = np.array([self.__dones[index] for index in indexes])
+            return states, actions, rewards, states_, dones
 
         def length(self):
             return len(self.__states)
@@ -139,11 +143,11 @@ class TD3:
     def act(self, state):
         return self.actor.pi(state)[0]
 
-    def observe(self, state, action, reward, state_, episode=-1, step=-1):
-        self.buffer.push(state, action, reward, state_)
+    def observe(self, state, action, reward, state_, done, episode=-1, step=-1):
+        self.buffer.push(state, action, reward, state_, 0 if done else 1)
 
         if self.step_counter>self.batch_size:
-            states, actions, rewards, states_ = self.buffer.get_random(self.batch_size)
+            states, actions, rewards, states_, dones = self.buffer.get_random(self.batch_size)
 
             self.critic.update(states, actions, rewards, states_, self.actor.pi(states_))
 
