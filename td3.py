@@ -29,9 +29,15 @@ class Critic:
 
         self.sess.run(tf.compat.v1.global_variables_initializer())
 
-    def update(self, states, actions, rewards, states_, actions_, dones):
+    def update(self, states, actions, rewards, states_, actions_, dones, noise_std=.2, noise_clip=.5, action_lims=None):
+
+        noise = np.random.standard_normal(actions_.shape)*noise_std
+        noise = np.clip(noise, -noise_clip, noise_clip)
+        actions_ += noise
+        actions_ = np.clip(actions_, action_lims[0], action_lims[1])
+
         min_q_s_a_ = self.Q(states_, actions_)
-        q_sa = np.reshape(rewards+self.gamma*min_q_s_a_*dones, (-1, 1))
+        q_sa = np.reshape(rewards + self.gamma * min_q_s_a_ * dones, (-1, 1))
 
         self.sess.run(self.train, feed_dict={self.model1.states: states,
                                              self.model1.actions: actions,
@@ -129,10 +135,12 @@ class ExperienceReplay:
 
 class TD3:
 
-    def __init__(self, state_dims, action_dims, batch_size=100, target_update_rate=2):
+    def __init__(self, state_dims, action_dims, action_low, action_high, batch_size=100, target_update_rate=2):
 
         self.critic = Critic(state_dims=state_dims, action_dims=action_dims)
         self.actor = Actor(state_dims=state_dims, action_dims=action_dims, critic=self.critic)
+
+        self.action_lims = np.array([action_low, action_high])
 
         self.buffer = ExperienceReplay(maxsize=10000)
 
@@ -149,7 +157,9 @@ class TD3:
         if self.step_counter>self.batch_size:
             states, actions, rewards, states_, dones = self.buffer.get_random(self.batch_size)
 
-            self.critic.update(states, actions, rewards, states_, self.actor.pi(states_))
+            actions_ = self.actor.pi(states_)
+
+            self.critic.update(states, actions, rewards, states_, actions_, action_lims=self.action_lims)
 
             if self.step_counter % self.target_update_rate == self.target_update_rate-1:
                 self.actor.update(states)

@@ -4,5 +4,6 @@
 
 clipboard.py
 
-log/
+log
+
 .idea/

@@ -42,6 +42,7 @@ state_length = np.array([1.05, .07])
 # actions_num = env.action_space.n
 
 state_dims = len(state_low)
+action_low, action_high = unwrapped_env.action_space.low, unwrapped_env.action_space.high
 action_dims = 1
 
 ################### FUNCTIONS ###################

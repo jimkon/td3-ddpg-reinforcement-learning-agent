@@ -58,30 +58,31 @@ class TestExperienceReplay(unittest.TestCase):
     def test_push(self):
         f = np.arange
         buffer = ExperienceReplay(10)
-        buffer.push(f(3), f(2), f(1), f(3))
-        s, a, r, s_ = buffer.get_random(1)
+        buffer.push(f(3), f(2), f(1), f(3), f(1))
+        s, a, r, s_, d = buffer.get_random(1)
         self.assertTrue(np.array_equal(s[0], f(3)))
         self.assertTrue(np.array_equal(a[0], f(2)))
         self.assertTrue(np.array_equal(r[0], f(1)))
         self.assertTrue(np.array_equal(s_[0], f(3)))
+        self.assertTrue(np.array_equal(d[0], f(1)))
 
         self.assertEqual(buffer.length(), 1)
         for i in range(2, 20):
-            buffer.push(f(3), f(2), f(1), f(3))
+            buffer.push(f(3), f(2), f(1), f(3), f(1))
             self.assertEqual(buffer.length(), min(i, 10))
 
     def test_get_random(self):
         f = np.arange
         buffer = ExperienceReplay(10)
         for i in range(2, 20):
-            buffer.push(f(3), f(2), f(1), f(3))
+            buffer.push(f(3), f(2), f(1), f(3), f(1))
 
-        s, a, r, s_ = buffer.get_random(3)
+        s, a, r, s_, d = buffer.get_random(3)
         self.assertTrue(len(s) == 3)
         self.assertTrue(len(a) == 3)
         self.assertTrue(len(r) == 3)
         self.assertTrue(len(s_) == 3)
-
+        self.assertTrue(len(d) == 3)
 
 
 if __name__ == '__main__':
