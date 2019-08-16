@@ -3,8 +3,7 @@ import time
 import gym
 import pandas as pd
 
-from rl_lib.utils.utils import running_average
-from rl_lib.agents.q_learning import QLearningAgent
+from utils import running_average
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -31,7 +30,7 @@ class MountainCarRewardWrapper(gym.RewardWrapper):
     def reward(self, reward):
         return reward_function(self.state)
 
-unwrapped_env = gym.make("MountainCar-v0")
+unwrapped_env = gym.make("MountainCarContinuous-v0")
 env = MountainCarRewardWrapper(unwrapped_env)
 
 state_low, state_high = np.array(env.observation_space.low, np.float64),\
@@ -40,7 +39,10 @@ state_low, state_high = np.array(env.observation_space.low, np.float64),\
 state_center = np.array([-.45, .0])
 state_length = np.array([1.05, .07])
 
-actions_num = env.action_space.n
+# actions_num = env.action_space.n
+
+state_dims = len(state_low)
+action_dims = 1
 
 ################### FUNCTIONS ###################
 
@@ -204,15 +206,7 @@ def plot_reward(df_ep, episode=0):
 def plot_policy(agent):
     xys = uniform_state_grid()
 
-    if isinstance(agent, QLearningAgent):
-        epsilon_enabled = agent.epsilon_enabled()
-        if epsilon_enabled:
-            agent.disable_epsilon()
-        actions = np.array([agent.act(xy) for xy in xys])
-        if epsilon_enabled:
-            agent.enable_epsilon()
-    else:
-        actions = np.array([agent.act(xy) for xy in xys])
+    actions = np.array([agent.act(xy) for xy in xys])
 
     plot(xys, actions)
     plt.colorbar(ticks=[0, 1, 2])
